@@ -5,6 +5,8 @@ pygame.init()
 screen = pygame.display.set_mode((1000, 695))
 pygame.display.set_caption("Tic Tac Toe")
 
+
+monosansVerySmall = pygame.font.SysFont("courier", 30)
 monosansSmall = pygame.font.SysFont("courier", 60)
 monosansBig = pygame.font.SysFont("courier", 100)
 
@@ -63,6 +65,12 @@ BUTTON_SCALE_HOVER = 1.1
 # GAME BOARD elements
 BOARD_COLOR = BUTTON_COLOR_NORMAL
 BOARD_LINE_WIDTH = 8
+
+# Quit button
+quitText = monosansVerySmall.render("Quit", True, "white")
+quitButton = pygame.Rect(850, 625, 100, 50)  # bottom-right corner
+quitHovered = False
+QUIT_BUTTON_COLOR = (30, 30, 30)
 
 # Board dimensions
 BOARD_SIZE = 450  # Size of the actual board
@@ -241,6 +249,20 @@ def drawGameState():
                         (board_x, board_y + 2*BOARD_SIZE//3),
                         (board_x + horizontal_line2_length, board_y + 2*BOARD_SIZE//3),
                         BOARD_LINE_WIDTH)
+                        
+        # Draw quit button
+        if quitHovered:
+            hoverRect = pygame.Rect(quitButton.x - (quitButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
+                                quitButton.y - (quitButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
+                                quitButton.width * BUTTON_SCALE_HOVER,
+                                quitButton.height * BUTTON_SCALE_HOVER)
+            pygame.draw.rect(screen, QUIT_BUTTON_COLOR, hoverRect, border_radius=5)
+            quitTextRect = quitText.get_rect(center=hoverRect.center)
+            screen.blit(quitText, quitTextRect)
+        else:
+            pygame.draw.rect(screen, QUIT_BUTTON_COLOR, quitButton, border_radius=5)
+            quitTextRect = quitText.get_rect(center=quitButton.center)
+            screen.blit(quitText, quitTextRect)
 
     if gameState == "menu":
         # Update main menu button positions and maintain center alignment
@@ -346,7 +368,7 @@ def drawGameState():
 
 def updateButtonHoverStates(mousePos):
     """Update button hover states based on mouse position."""
-    global playHovered, creditsHovered, singleplayerHovered, multiplayerHovered, backHovered
+    global playHovered, creditsHovered, singleplayerHovered, multiplayerHovered, backHovered, quitHovered
     
     if gameState == "menu":
         playHovered = playButton.collidepoint(mousePos)
@@ -355,12 +377,16 @@ def updateButtonHoverStates(mousePos):
         singleplayerHovered = singleplayerButton.collidepoint(mousePos)
         multiplayerHovered = multiplayerButton.collidepoint(mousePos)
         backHovered = backButton.collidepoint(mousePos)
+    elif gameState == "play":
+        quitHovered = quitButton.collidepoint(mousePos)
 
 def showMainMenu():
     """Animate all menu elements appearing simultaneously."""
-    global gameState, tttTextY, creditsButtonY, playButtonY, creditsButton, playButton
+    global gameState, tttTextY, creditsButtonY, playButtonY, creditsButton, playButton, tttText
 
     gameState = "menu"
+
+    tttText = monosansBig.render("Tic Tac Toe", True, "white")  # Reset title text
 
     # Starting positions
     title_start = -100
@@ -412,7 +438,7 @@ def showMainMenu():
 
 def showModeSelection():
     """Animate mode selection menu appearing."""
-    global gameState, tttTextY, singleplayerButtonY, multiplayerButtonY, backButtonY
+    global gameState, tttTextY, singleplayerButtonY, multiplayerButtonY, backButtonY, tttText
 
     gameState = "choose mode"
 
@@ -463,6 +489,40 @@ def showModeSelection():
     singleplayerButtonY = singleplayer_target
     multiplayerButtonY = multiplayer_target
     backButtonY = back_target
+
+def hideGameBoard():
+    """Animate the game board lines rolling back in."""
+    global vertical_line1_length, vertical_line2_length, horizontal_line1_length, horizontal_line2_length
+
+    progress = 0.0
+    speed = 0.02
+
+    # Starting positions (current full length)
+    start_length = BOARD_SIZE
+
+    while progress < 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        progress = min(1.0, progress + speed)
+        # Use quadratic ease-in for retracting animation
+        ease_factor = progress * progress
+
+        # Animate lines retracting
+        vertical_line1_length = start_length * (1 - ease_factor)
+        vertical_line2_length = start_length * (1 - ease_factor)
+        horizontal_line1_length = start_length * (1 - ease_factor)
+        horizontal_line2_length = start_length * (1 - ease_factor)
+
+        drawGameState()
+
+    # Ensure lines are exactly at their initial lengths
+    vertical_line1_length = 0
+    vertical_line2_length = 0
+    horizontal_line1_length = 0
+    horizontal_line2_length = 0
 
 def showGameBoard():
     """Animate the game board lines rolling out."""
@@ -593,7 +653,7 @@ while True:
             pygame.quit()
             sys.exit()
         
-        if event.type == pygame.MOUSEMOTION and gameState in ["menu", "choose mode"]:
+        if event.type == pygame.MOUSEMOTION and gameState in ["menu", "choose mode", "play"]:
             updateButtonHoverStates(event.pos)
             
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -624,12 +684,13 @@ while True:
 
                 elif backButton.collidepoint(mouse_x, mouse_y):
                     hideModeSelection()
-                    tttText = monosansBig.render("Tic Tac Toe", True, "white")  # Reset title text
                     showMainMenu()
             
-            # In play state, clicking could return to menu
+            # In play state, handle quit button
             elif gameState == "play":
-                showMainMenu()
+                if quitButton.collidepoint(mouse_x, mouse_y):
+                    hideGameBoard()
+                    showMainMenu()
 
     # Draw the current game state (handles all rendering)
     drawGameState()
