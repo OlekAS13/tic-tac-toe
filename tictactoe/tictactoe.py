@@ -3,12 +3,12 @@ import sys
 
 pygame.init()
 screen = pygame.display.set_mode((1000, 695))
-pygame.display.set_caption("Tic Tac Toe")
+pygame.display.set_caption("Tic Tac Toe  |  by OlekAS13")
 
 
-monosansVerySmall = pygame.font.SysFont("courier", 30)
-monosansSmall = pygame.font.SysFont("courier", 60)
-monosansBig = pygame.font.SysFont("courier", 100)
+monosansVerySmall = pygame.font.Font("monosans.ttf", 30)
+monosansSmall = pygame.font.Font("monosans.ttf", 60)
+monosansBig = pygame.font.Font("monosans.ttf", 100)
 
 gameState = "menu"
 
@@ -35,6 +35,7 @@ creditsText = monosansSmall.render("Credits", True, "white")
 creditsButtonY = 700
 creditsButton = pygame.Rect(300, creditsButtonY, 450, 100)
 creditsHovered = False
+creditsTextActual = monosansVerySmall.render("Game developed by Aleksander Stachura\n\nThe Game is licenced under GNU GPL v3\n\nEnjoy the game!", True, "white")
 
 playButtonY = 700
 playButton = pygame.Rect(300, playButtonY, 450, 100)
@@ -56,6 +57,25 @@ multiplayerHovered = False
 backButtonY = 700
 backButton = pygame.Rect(300, backButtonY, 450, 100)
 backHovered = False
+
+# CREDITS elements
+creditsTextLines = [
+    "Tic Tac Toe",
+    "",
+    "Developed by",
+    "Aleksander Stachura",
+    "",
+    "Enjoy the game!",
+    "",
+    "Made with Python",
+    "and Pygame"
+]
+creditsTextSurfaces = [monosansSmall.render(line, True, "white") for line in creditsTextLines]
+creditsTextY = -600  # Start above screen
+
+creditsBackButton = pygame.Rect(300, 700, 450, 100)  # Start off-screen like other buttons
+creditsBackText = monosansSmall.render("Back", True, "white")
+creditsBackHovered = False
 
 # Button colors and scale
 BUTTON_COLOR_NORMAL = (50, 50, 50)
@@ -106,8 +126,8 @@ def drawGameState():
     
     screen.fill("black")
 
-    # Draw background for menu and mode selection states
-    if gameState in ["menu", "choose mode"]:
+    # Draw background for menu, mode selection, and credits states
+    if gameState in ["menu", "choose mode", "credits"]:
         # Update background scroll
         offset_x = (offset_x + scroll_speed) % tile_w
         offset_y = (offset_y + scroll_speed) % tile_h
@@ -225,6 +245,36 @@ def drawGameState():
                 textRect = backText.get_rect(center=backButton.center)
                 screen.blit(backText, textRect)
 
+        elif gameState == "credits":
+            # Update credits back button position
+            screen_center_x = screen.get_width() / 2
+            button_width = 450
+            button_x = screen_center_x - button_width / 2
+            creditsBackButton.x = button_x
+
+            # Draw credits text
+            line_spacing = 60
+            for i, textSurface in enumerate(creditsTextSurfaces):
+                y_pos = creditsTextY + (i * line_spacing)
+                x_pos = screen.get_width() / 2 - textSurface.get_width() / 2
+                screen.blit(textSurface, (x_pos, y_pos))
+
+            # Draw back button with hover effect
+            if creditsBackHovered:
+                hoverRect = pygame.Rect(creditsBackButton.x - (creditsBackButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
+                                    creditsBackButton.y - (creditsBackButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
+                                    creditsBackButton.width * BUTTON_SCALE_HOVER,
+                                    creditsBackButton.height * BUTTON_SCALE_HOVER)
+                pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
+                textRect = creditsBackText.get_rect(center=hoverRect.center)
+                screen.blit(creditsBackText, textRect)
+            else:
+                pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, creditsBackButton, border_radius=10)
+                textRect = creditsBackText.get_rect(center=creditsBackButton.center)
+                screen.blit(creditsBackText, textRect)
+
+    
+
     elif gameState == "play":
         # Draw the game board
         board_x = BOARD_MARGIN_LEFT
@@ -264,111 +314,12 @@ def drawGameState():
             quitTextRect = quitText.get_rect(center=quitButton.center)
             screen.blit(quitText, quitTextRect)
 
-    if gameState == "menu":
-        # Update main menu button positions and maintain center alignment
-        screen_center_x = screen.get_width() / 2
-        button_width = 450  # Width of our buttons
-        button_x = screen_center_x - button_width / 2
-
-        playButton.x = button_x
-        playButton.y = playButtonY
-        creditsButton.x = button_x
-        creditsButton.y = creditsButtonY
-
-        # Draw main menu UI elements
-        screen.blit(tttText, (screen.get_width() / 2 - tttText.get_width() / 2, tttTextY))
-
-        # Draw play button with hover effect
-        if playHovered:
-            hoverRect = pygame.Rect(playButton.x - (playButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                playButton.y - (playButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                playButton.width * BUTTON_SCALE_HOVER,
-                                playButton.height * BUTTON_SCALE_HOVER)
-            pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
-            playTextRect = playText.get_rect(center=hoverRect.center)
-            screen.blit(playText, playTextRect)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, playButton, border_radius=10)
-            playTextRect = playText.get_rect(center=playButton.center)
-            screen.blit(playText, playTextRect)
-
-        # Draw credits button with hover effect
-        if creditsHovered:
-            hoverRect = pygame.Rect(creditsButton.x - (creditsButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                creditsButton.y - (creditsButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                creditsButton.width * BUTTON_SCALE_HOVER,
-                                creditsButton.height * BUTTON_SCALE_HOVER)
-            pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
-            creditsTextRect = creditsText.get_rect(center=hoverRect.center)
-            screen.blit(creditsText, creditsTextRect)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, creditsButton, border_radius=10)
-            creditsTextRect = creditsText.get_rect(center=creditsButton.center)
-            screen.blit(creditsText, creditsTextRect)
-    
-    elif gameState == "choose mode":
-        # Update mode selection button positions and maintain center alignment
-        screen_center_x = screen.get_width() / 2
-        button_width = 450  # Width of our buttons
-        button_x = screen_center_x - button_width / 2
-
-        singleplayerButton.x = button_x
-        singleplayerButton.y = singleplayerButtonY
-        
-        multiplayerButton.x = button_x
-        multiplayerButton.y = multiplayerButtonY
-        
-        backButton.x = button_x
-        backButton.y = backButtonY            # Draw title
-        screen.blit(tttText, (screen.get_width() / 2 - tttText.get_width() / 2, tttTextY))
-
-            # Draw singleplayer button with hover effect
-        if singleplayerHovered:
-            hoverRect = pygame.Rect(singleplayerButton.x - (singleplayerButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                singleplayerButton.y - (singleplayerButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                singleplayerButton.width * BUTTON_SCALE_HOVER,
-                                singleplayerButton.height * BUTTON_SCALE_HOVER)
-            pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
-            textRect = singleplayerText.get_rect(center=hoverRect.center)
-            screen.blit(singleplayerText, textRect)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, singleplayerButton, border_radius=10)
-            textRect = singleplayerText.get_rect(center=singleplayerButton.center)
-            screen.blit(singleplayerText, textRect)
-
-        # Draw multiplayer button with hover effect
-        if multiplayerHovered:
-            hoverRect = pygame.Rect(multiplayerButton.x - (multiplayerButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                multiplayerButton.y - (multiplayerButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                multiplayerButton.width * BUTTON_SCALE_HOVER,
-                                multiplayerButton.height * BUTTON_SCALE_HOVER)
-            pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
-            textRect = multiplayerText.get_rect(center=hoverRect.center)
-            screen.blit(multiplayerText, textRect)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, multiplayerButton, border_radius=10)
-            textRect = multiplayerText.get_rect(center=multiplayerButton.center)
-            screen.blit(multiplayerText, textRect)
-
-        # Draw back button with hover effect
-        if backHovered:
-            hoverRect = pygame.Rect(backButton.x - (backButton.width * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                backButton.y - (backButton.height * (BUTTON_SCALE_HOVER - 1)) / 2,
-                                backButton.width * BUTTON_SCALE_HOVER,
-                                backButton.height * BUTTON_SCALE_HOVER)
-            pygame.draw.rect(screen, BUTTON_COLOR_HOVER, hoverRect, border_radius=10)
-            textRect = backText.get_rect(center=hoverRect.center)
-            screen.blit(backText, textRect)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR_NORMAL, backButton, border_radius=10)
-            textRect = backText.get_rect(center=backButton.center)
-            screen.blit(backText, textRect)    # Update display
     pygame.display.flip()
     clock.tick(60)
 
 def updateButtonHoverStates(mousePos):
     """Update button hover states based on mouse position."""
-    global playHovered, creditsHovered, singleplayerHovered, multiplayerHovered, backHovered, quitHovered
+    global playHovered, creditsHovered, singleplayerHovered, multiplayerHovered, backHovered, quitHovered, creditsBackHovered
     
     if gameState == "menu":
         playHovered = playButton.collidepoint(mousePos)
@@ -379,6 +330,8 @@ def updateButtonHoverStates(mousePos):
         backHovered = backButton.collidepoint(mousePos)
     elif gameState == "play":
         quitHovered = quitButton.collidepoint(mousePos)
+    elif gameState == "credits":
+        creditsBackHovered = creditsBackButton.collidepoint(mousePos)
 
 def showMainMenu():
     """Animate all menu elements appearing simultaneously."""
@@ -453,9 +406,9 @@ def showModeSelection():
 
     # Target positions
     title_target = 100
-    singleplayer_target = 200
-    multiplayer_target = 350
-    back_target = 500
+    singleplayer_target = 300
+    multiplayer_target = 420
+    back_target = 580
 
     # Set initial positions
     tttTextY = title_start
@@ -490,6 +443,77 @@ def showModeSelection():
     multiplayerButtonY = multiplayer_target
     backButtonY = back_target
 
+def showGameBoard():
+    """Animate the game board lines rolling out."""
+    global board_progress, vertical_line1_length, vertical_line2_length, horizontal_line1_length, horizontal_line2_length
+
+    progress = 0.0
+    speed = 0.02
+
+    while progress < 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        progress = min(1.0, progress + speed)
+        # Use the same easing as buttons for consistency
+        ease_factor = -(progress * (progress - 2))
+
+        # Animate line lengths
+        vertical_line1_length = BOARD_SIZE * ease_factor
+        vertical_line2_length = BOARD_SIZE * ease_factor
+        horizontal_line1_length = BOARD_SIZE * ease_factor
+        horizontal_line2_length = BOARD_SIZE * ease_factor
+
+        drawGameState()
+
+    # Ensure lines are exactly at their final lengths
+    vertical_line1_length = BOARD_SIZE
+    vertical_line2_length = BOARD_SIZE
+    horizontal_line1_length = BOARD_SIZE
+    horizontal_line2_length = BOARD_SIZE
+
+def showCredits():
+    """Animate credits screen appearing."""
+    global gameState, creditsTextY, creditsBackButton
+
+    gameState = "credits"
+
+    # Starting positions
+    text_start = -600
+    back_start = 700
+
+    # Target positions
+    text_target = 0
+    back_target = 570
+
+    # Set initial positions
+    creditsTextY = text_start
+    creditsBackButton.y = back_start
+
+    # Animation control
+    progress = 0.0
+    speed = 0.02
+
+    while progress < 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        progress = min(1.0, progress + speed)
+        ease_factor = -(progress * (progress - 2))
+
+        creditsTextY = text_start + (text_target - text_start) * ease_factor
+        creditsBackButton.y = back_start + (back_target - back_start) * ease_factor
+
+        drawGameState()
+
+    # Ensure everything is at their targets
+    creditsTextY = text_target
+    creditsBackButton.y = back_target
+
 def hideGameBoard():
     """Animate the game board lines rolling back in."""
     global vertical_line1_length, vertical_line2_length, horizontal_line1_length, horizontal_line2_length
@@ -523,37 +547,6 @@ def hideGameBoard():
     vertical_line2_length = 0
     horizontal_line1_length = 0
     horizontal_line2_length = 0
-
-def showGameBoard():
-    """Animate the game board lines rolling out."""
-    global board_progress, vertical_line1_length, vertical_line2_length, horizontal_line1_length, horizontal_line2_length
-
-    progress = 0.0
-    speed = 0.02
-
-    while progress < 1:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-        progress = min(1.0, progress + speed)
-        # Use the same easing as buttons for consistency
-        ease_factor = -(progress * (progress - 2))
-
-        # Animate line lengths
-        vertical_line1_length = BOARD_SIZE * ease_factor
-        vertical_line2_length = BOARD_SIZE * ease_factor
-        horizontal_line1_length = BOARD_SIZE * ease_factor
-        horizontal_line2_length = BOARD_SIZE * ease_factor
-
-        drawGameState()
-
-    # Ensure lines are exactly at their final lengths
-    vertical_line1_length = BOARD_SIZE
-    vertical_line2_length = BOARD_SIZE
-    horizontal_line1_length = BOARD_SIZE
-    horizontal_line2_length = BOARD_SIZE
 
 def hideModeSelection():
     """Animate mode selection menu disappearing."""
@@ -596,6 +589,40 @@ def hideModeSelection():
     singleplayerButtonY = singleplayer_target
     multiplayerButtonY = multiplayer_target
     backButtonY = back_target
+
+def hideCredits():
+    """Animate credits screen disappearing."""
+    global gameState, creditsTextY, creditsBackButton
+
+    # Starting positions
+    text_start = creditsTextY
+    back_start = creditsBackButton.y
+
+    # Target positions
+    text_target = -600
+    back_target = 700
+
+    # Animation control
+    progress = 0.0
+    speed = 0.02
+
+    while progress < 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        progress = min(1.0, progress + speed)
+        ease_factor = progress * progress
+
+        creditsTextY = text_start + (text_target - text_start) * ease_factor
+        creditsBackButton.y = back_start + (back_target - back_start) * ease_factor
+
+        drawGameState()
+
+    # Ensure everything is at their targets
+    creditsTextY = text_target
+    creditsBackButton.y = back_target
 
 def hideMainMenu():
     """Animate all menu elements disappearing simultaneously."""
@@ -653,7 +680,7 @@ while True:
             pygame.quit()
             sys.exit()
         
-        if event.type == pygame.MOUSEMOTION and gameState in ["menu", "choose mode", "play"]:
+        if event.type == pygame.MOUSEMOTION and gameState in ["menu", "choose mode", "play", "credits"]:
             updateButtonHoverStates(event.pos)
             
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -668,7 +695,8 @@ while True:
                     
                 # Check credits button click
                 elif creditsButton.collidepoint(mouse_x, mouse_y):
-                    pass  # Add credits logic here
+                    hideMainMenu()
+                    showCredits()
             
             # In choose mode state, handle mode selection buttons
             elif gameState == "choose mode":
@@ -690,6 +718,12 @@ while True:
             elif gameState == "play":
                 if quitButton.collidepoint(mouse_x, mouse_y):
                     hideGameBoard()
+                    showMainMenu()
+
+            # In credits state, handle back button
+            elif gameState == "credits":
+                if creditsBackButton.collidepoint(mouse_x, mouse_y):
+                    hideCredits()
                     showMainMenu()
 
     # Draw the current game state (handles all rendering)
