@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 
 pygame.init()
 screen = pygame.display.set_mode((1000, 695))
@@ -11,6 +12,9 @@ monosansSmall = pygame.font.Font("monosans.ttf", 60)
 monosansBig = pygame.font.Font("monosans.ttf", 100)
 
 gameState = "menu"
+player = " "
+board = [" ", " ", " ", " ", " ", " ", " ", " ", " "]
+won = False
 
 # BACKGROUND elements
 
@@ -86,6 +90,10 @@ BUTTON_SCALE_HOVER = 1.1
 BOARD_COLOR = BUTTON_COLOR_NORMAL
 BOARD_LINE_WIDTH = 8
 
+# Game pieces
+X_piece = monosansBig.render("X", True, "white")
+O_piece = monosansBig.render("O", True, "white")
+
 # Quit button
 quitText = monosansVerySmall.render("Quit", True, "white")
 quitButton = pygame.Rect(850, 625, 100, 50)  # bottom-right corner
@@ -97,12 +105,31 @@ BOARD_SIZE = 450  # Size of the actual board
 BOARD_MARGIN_TOP = 125  # Distance from top edge
 BOARD_MARGIN_LEFT = (1000 - 450) // 2  # Center horizontally ((screen width - board size) / 2)
 board_progress = 0.0  # Animation progress
+winning_indices = None  # Store winning line indices
 
 # Line coordinates (start positions, will be animated)
 vertical_line1_length = 0
 vertical_line2_length = 0
 horizontal_line1_length = 0
 horizontal_line2_length = 0
+
+# Board tile buttons (invisible buttons for gameplay)
+CELL_SIZE = BOARD_SIZE // 3  # Size of each cell including the line
+board_buttons = []
+
+# Create 9 buttons in a 3x3 grid
+for row in range(3):
+    for col in range(3):
+        x = BOARD_MARGIN_LEFT + col * CELL_SIZE  # Start of cell
+        y = BOARD_MARGIN_TOP + row * CELL_SIZE
+        # Adjust position by line width when after first column/row
+        x += (BOARD_LINE_WIDTH // 2) if col > 0 else 0
+        y += (BOARD_LINE_WIDTH // 2) if row > 0 else 0
+        # Adjust size by line width for edge cells, adding 1px to stretch
+        width = CELL_SIZE - (BOARD_LINE_WIDTH if col > 0 else BOARD_LINE_WIDTH // 2) + 1
+        height = CELL_SIZE - (BOARD_LINE_WIDTH if row > 0 else BOARD_LINE_WIDTH // 2) + 1
+        button = pygame.Rect(x, y, width, height)
+        board_buttons.append(button)
 
 # filling tile with X and O
 for y in range(2):
@@ -280,25 +307,39 @@ def drawGameState():
         board_x = BOARD_MARGIN_LEFT
         board_y = BOARD_MARGIN_TOP
 
-        # Draw vertical lines
+        # Draw vertical lines (aligned with tiles)
         pygame.draw.line(screen, BOARD_COLOR, 
                         (board_x + BOARD_SIZE//3, board_y),
-                        (board_x + BOARD_SIZE//3, board_y + vertical_line1_length),
+                        (board_x + BOARD_SIZE//3, board_y + vertical_line1_length - 4),
                         BOARD_LINE_WIDTH)
         pygame.draw.line(screen, BOARD_COLOR,
                         (board_x + 2*BOARD_SIZE//3, board_y),
-                        (board_x + 2*BOARD_SIZE//3, board_y + vertical_line2_length),
+                        (board_x + 2*BOARD_SIZE//3, board_y + vertical_line2_length - 4),
                         BOARD_LINE_WIDTH)
 
-        # Draw horizontal lines
+        # Draw horizontal lines (aligned with tiles)
         pygame.draw.line(screen, BOARD_COLOR,
                         (board_x, board_y + BOARD_SIZE//3),
-                        (board_x + horizontal_line1_length, board_y + BOARD_SIZE//3),
+                        (board_x + horizontal_line1_length - 4, board_y + BOARD_SIZE//3),
                         BOARD_LINE_WIDTH)
         pygame.draw.line(screen, BOARD_COLOR,
                         (board_x, board_y + 2*BOARD_SIZE//3),
-                        (board_x + horizontal_line2_length, board_y + 2*BOARD_SIZE//3),
+                        (board_x + horizontal_line2_length - 4, board_y + 2*BOARD_SIZE//3),
                         BOARD_LINE_WIDTH)
+        
+        # Draw board buttons and winning line highlight
+        for i, button in enumerate(board_buttons):
+            if winning_indices and i in winning_indices:
+                pygame.draw.rect(screen, BUTTON_COLOR_HOVER, button, 0)  # Fill winning tiles
+        
+        # Draw X's and O's
+        for i, button in enumerate(board_buttons):
+            if board[i] == "X":
+                text_rect = X_piece.get_rect(center=button.center)
+                screen.blit(X_piece, text_rect)
+            elif board[i] == "O":
+                text_rect = O_piece.get_rect(center=button.center)
+                screen.blit(O_piece, text_rect)
                         
         # Draw quit button
         if quitHovered:
@@ -313,6 +354,25 @@ def drawGameState():
             pygame.draw.rect(screen, QUIT_BUTTON_COLOR, quitButton, border_radius=5)
             quitTextRect = quitText.get_rect(center=quitButton.center)
             screen.blit(quitText, quitTextRect)
+
+        
+        if gamemode == "multiplayer":
+            if not won:
+                if player == "X":
+                    xMoveText = monosansSmall.render("X Move", True, "white")
+                    screen.blit(xMoveText, (10, 10))
+                elif player == "O":
+                    oMoveText = monosansSmall.render("O Move", True, "white")
+                    screen.blit(oMoveText, (775, 10))
+            elif won:
+                if result != "tie":
+                    wonText = monosansBig.render(f"{result} won", True, "white")
+                    screen.blit(wonText, (350, 0))
+                else:
+                    tieText = monosansBig.render("Tie", True, "white")
+                    screen.blit(tieText, (430, 0))
+            
+
 
     pygame.display.flip()
     clock.tick(60)
@@ -514,6 +574,35 @@ def showCredits():
     creditsTextY = text_target
     creditsBackButton.y = back_target
 
+def checkWin(board):
+    """Check if there is a winner on the board.
+    Returns: (winner, winning_line) where:
+    - winner is None if no winner, 'X' if X wins, 'O' if O wins, 'tie' if board is full
+    - winning_line is a list of indices that form the winning line, or None if no winner"""
+    
+    # Check rows
+    for i in range(0, 9, 3):  # Check each row (0, 3, 6)
+        if board[i] != " " and board[i] == board[i+1] == board[i+2]:
+            return board[i], [i, i+1, i+2]
+    
+    # Check columns
+    for i in range(3):  # Check each column (0, 1, 2)
+        if board[i] != " " and board[i] == board[i+3] == board[i+6]:
+            return board[i], [i, i+3, i+6]
+    
+    # Check diagonals
+    if board[0] != " " and board[0] == board[4] == board[8]:  # Top-left to bottom-right
+        return board[0], [0, 4, 8]
+    if board[2] != " " and board[2] == board[4] == board[6]:  # Top-right to bottom-left
+        return board[2], [2, 4, 6]
+    
+    # Check for tie (board is full)
+    if " " not in board:  # No empty spaces left
+        return "tie", None
+    
+    # No winner yet
+    return None, None
+
 def hideGameBoard():
     """Animate the game board lines rolling back in."""
     global vertical_line1_length, vertical_line2_length, horizontal_line1_length, horizontal_line2_length
@@ -703,22 +792,61 @@ while True:
                 if singleplayerButton.collidepoint(mouse_x, mouse_y):
                     hideModeSelection()
                     gameState = "play"
+                    gamemode = "singleplayer"
                     showGameBoard()
                     
                 elif multiplayerButton.collidepoint(mouse_x, mouse_y):
                     hideModeSelection()
                     gameState = "play"
+                    gamemode = "multiplayer"
                     showGameBoard()
+                    player = random.choice(["X", "O"])
+                    board = [" ", " ", " ", " ", " ", " ", " ", " ", " "]
 
                 elif backButton.collidepoint(mouse_x, mouse_y):
                     hideModeSelection()
                     showMainMenu()
             
-            # In play state, handle quit button
+            # In play state, handle board and quit button clicks
             elif gameState == "play":
+                # Check for clicks on board tiles
+                for i, button in enumerate(board_buttons):
+                    if button.collidepoint(mouse_x, mouse_y):
+                        # Here you'll add the logic for handling moves
+                        # The tile index i corresponds to:
+                        # 0 1 2
+                        # 3 4 5
+                        # 6 7 8
+
+                        if board[i] == " " and not won:
+                            # Make move
+                            board[i] = player
+                            
+                            # Check for win or tie
+                            result, win_line = checkWin(board)
+                            if result is not None:
+                                if result == "tie":
+                                    print("It's a tie!")  # Replace with proper game over handling
+                                    won = True
+                                else:
+                                    print(f"Player {result} wins!")  # Replace with proper win handling
+                                    won = True
+                                    #global winning_indices
+                                    winning_indices = win_line
+
+                            else:
+                                # Switch players if game isn't over
+                                player = "O" if player == "X" else "X"
+                
+                # Handle quit button
                 if quitButton.collidepoint(mouse_x, mouse_y):
                     hideGameBoard()
                     showMainMenu()
+                    player = " "
+                    board = [" ", " ", " ", " ", " ", " ", " ", " ", " "]
+                    won = False
+                    #global winning_indices
+                    winning_indices = None
 
             # In credits state, handle back button
             elif gameState == "credits":
